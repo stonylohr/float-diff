@@ -1,0 +1,8 @@
+[package]
+name = "diff_summary_f64"
+version = "0.1.0"
+license = "MIT"
+edition = "2018"
+
+description = "Utilities for use in summarizing differences between numeric datasets."
+authors = ["Stony Lohr <stony.lohr@gmail.com>"]
