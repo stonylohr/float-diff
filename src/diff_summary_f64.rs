@@ -46,11 +46,8 @@ use crate::util;
 // among sets of comparable expected vs found values.
 pub struct DiffSummary<'a>
 {
-    // The base or group name, if this summary is in a group.
-    pub name_base: &'a str,
-
     // The name of this individual summary.
-    pub name_detail: &'a str,
+    pub name: &'a str,
 
     // The maximum difference found so far in data passed to this summary.
     diff: f64,
@@ -86,8 +83,7 @@ pub struct DiffSummary<'a>
 impl<'a> DiffSummary<'a> {
     pub fn new(name: &'a str, allow_diff: f64, allow_sign: bool, bucket_count: usize, calc_diff: &'a dyn Fn(f64, f64) -> (f64, bool)) -> Self {
         DiffSummary {
-            name_base: "",
-            name_detail: name,
+            name: name,
             allow_diff: allow_diff,
             allow_sign: allow_sign,
             diff: 0.0,
@@ -101,12 +97,11 @@ impl<'a> DiffSummary<'a> {
     }
 
     // Create a vector of DiffSummary based on a slice of tuples with the form:
-    // (name, allow_diff, allow_sign)
-    pub fn new_vec(name_base: &'a str, bucket_count: usize, infos: &'a [(&str, f64, bool, &'a dyn Fn(f64, f64) -> (f64, bool))]) -> Vec<Self> {
+    // (name, allow_diff, allow_sign, calc_diff)
+    pub fn new_vec(bucket_count: usize, infos: &'a [(&str, f64, bool, &'a dyn Fn(f64, f64) -> (f64, bool))]) -> Vec<Self> {
         infos.iter().map(|(name, allow_diff, allow_sign, calc_diff)| {
             DiffSummary {
-                name_base: name_base,
-                name_detail: name,
+                name: name,
                 allow_diff: *allow_diff,
                 allow_sign: *allow_sign,
                 diff: 0.0,
@@ -158,10 +153,9 @@ impl<'a> DiffSummary<'a> {
     pub fn assert(&self) {
         assert!(
             self.diff <= self.allow_diff,
-            "assert failed item {}, {} {}: {}{:e} vs {}{:e} diff abs {:e} outside inclusive {:e}",
+            "assert failed item {}, {}: {}{:e} vs {}{:e} diff abs {:e} outside inclusive {:e}",
             self.summary_diff.sample_index,
-            self.name_base,
-            self.name_detail,
+            self.name,
             util::help_sign(self.summary_diff.sample_x),
             self.summary_diff.sample_x,
             util::help_sign(self.summary_diff.sample_y),
@@ -171,10 +165,9 @@ impl<'a> DiffSummary<'a> {
         );
         assert!(
             self.allow_sign || self.summary_sign.count == 0,
-            "assert failed item {}, {} {}: {}{:e} vs {}{:e} sign difference disallowed.",
+            "assert failed item {}, {}: {}{:e} vs {}{:e} sign difference disallowed.",
             self.summary_sign.sample_index,
-            self.name_base,
-            self.name_detail,
+            self.name,
             util::help_sign(self.summary_sign.sample_x),
             self.summary_sign.sample_x,
             util::help_sign(self.summary_sign.sample_y),
@@ -186,8 +179,7 @@ impl<'a> DiffSummary<'a> {
 impl Clone for DiffSummary<'_> {
         fn clone(&self) -> Self {
             DiffSummary {
-                name_base: self.name_base,
-                name_detail: self.name_detail,
+                name: self.name,
                 diff: self.diff,
                 allow_diff: self.allow_diff,
                 allow_sign: self.allow_sign,
@@ -206,11 +198,9 @@ impl Display for DiffSummary<'_> {
         assert!(self.num_diff_fail <= self.num_total);
         write!(
             f,
-            "{}{}{}{}count {}",
-            self.name_base,
-            if self.name_base.len() > 0 && self.name_detail.len() > 0 { " " } else { "" },
-            self.name_detail,
-            if self.name_base.len() > 0 || self.name_detail.len() > 0 { ": " } else { "" },
+            "{}{}count {}",
+            self.name,
+            if self.name.len() > 0 { ": " } else { "" },
             self.num_total
         )?;
         if self.summary_diff.count > 0 {
@@ -302,7 +292,7 @@ mod tests {
             (f64::MAX, f64::MIN, 0.0, 1e-18),
         ];
 
-        let mut summaries = DiffSummary::new_vec("samples", 4, &[
+        let mut summaries = DiffSummary::new_vec(4, &[
             ("data0", 2e-8, false, &util::calc_diff_abs),
             ("data1", 1e-6, true, &util::calc_diff_abs),
             ("data2", 1e-9, false, &util::calc_diff_abs),
