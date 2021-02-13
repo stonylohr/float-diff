@@ -6,3 +6,6 @@ edition = "2018"
 
 description = "Utilities for use in summarizing differences between numeric datasets."
 authors = ["Stony Lohr <stony.lohr@gmail.com>"]
+
+[dependencies]
+float-cmp = "0.8.0"

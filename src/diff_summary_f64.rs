@@ -3,50 +3,12 @@ use crate::diff_part_summary::DiffPartSummary;
 use crate::log_histogram::LogHistogram;
 use crate::util;
 
-// todo: review comments for use of latest terminology
-// todo: refresh files
-// todo: commit
-// todo: create new repo based on local
-// todo: search for comparable existing...
-//      // todo: do any of these allow reporting the difference between two values using
-//      //       various standards, or do they only ever tell you if two values are within
-//      //       a specified tolerance? I want the former
-//      //       (I'm getting the sense that difference in "steps" may be hard in some cases)
-//      // todo: I also want to retain support for cyclical values (e.g. angles with specified range),
-//      //       but I figure that I can add that as another layer on top of a base difference model
-//      // todo: if there's an especially promising candidate, try plugging it in
-//      // todo: pick one that seems most promising, and try asking on their forum/email/whatever?
-//      partial?: https://crates.io/crates/approx
-//          3,782,898 downloads, releases 2015 to late 2020
-//          todo: look closer
-//      partial?: https://crates.io/crates/float-cmp
-//          1,579,536 downloads, releases 2015 to may 2020
-//          todo: look closer
-//      partial?: https://crates.io/crates/float_eq
-//          55,452 downloads, releases Apr-Aug 2020
-//          especially nice documentation
-//          todo: look closer
-//      partial?: https://crates.io/crates/almost
-//          4,195 downloads, releases 2019
-//      partial?: https://crates.io/crates/assert_float_eq
-//          9,077 downloads, all releases in 2018
-//          see https://github.com/Alexhuszagh/assert_float_eq/blob/master/src/lib.rs
-//      unlikely: https://crates.io/crates/efloat
-//          (floating point type that tracks how far off it may be from precise)
-// todo: ask for input (from michaelkirk? ben brewster?) on strategies for finding comparable existing crates
-// todo: consider adjusting name based on any other crates I integrate (e.g. approx-diff)
-// todo: figure out whether it's worth sharing (e.g. registering on crates.io)
-//      maybe under debugging: https://crates.io/categories/development-tools::debugging
-//      maybe under testing: https://crates.io/categories/development-tools::testing
-
-
-
-// Information about value differences.
-// This is typically used to record the worst-case differences found
-// among sets of comparable expected vs found values.
+// An object for tracking a series of test results for a the same measurement type,
+// recording how they compare to the expected value for the test case, and 
+// reporting out those findings.
 pub struct DiffSummary<'a>
 {
-    // The name of this individual summary.
+    // The name of this summary.
     pub name: &'a str,
 
     // The maximum difference found so far in data passed to this summary.
@@ -77,9 +39,6 @@ pub struct DiffSummary<'a>
     calc_diff: &'a dyn Fn(f64, f64) -> (f64, bool),
 }
 
-// An object for tracking a series of test results for a the same measurement type,
-// recording how they compare to the expected value for the test case, and 
-// reporting out those findings.
 impl<'a> DiffSummary<'a> {
     pub fn new(name: &'a str, allow_diff: f64, allow_sign: bool, bucket_count: usize, calc_diff: &'a dyn Fn(f64, f64) -> (f64, bool)) -> Self {
         DiffSummary {
@@ -218,7 +177,7 @@ impl Display for DiffSummary<'_> {
                 self.histo,
             )?;
         } else if self.num_total > 0 {
-            write!(f, ", zero 100%")?;
+            write!(f, ", zero 100%, 0% failed tolerance {:e}", self.allow_diff)?;
         }
         if self.num_total > 0 {
             write!(
@@ -243,7 +202,8 @@ impl Display for DiffSummary<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DiffSummary, util};
+    use super::{DiffSummary};
+    use crate::diff;
     use std::f64;
 
     #[test]
@@ -255,7 +215,7 @@ mod tests {
             (0.1, -0.1),
             (f64::NAN, f64::NAN),
         ];
-        let mut summary = DiffSummary::new("simple", 1.0, false, 4, &util::calc_diff_abs);
+        let mut summary = DiffSummary::new("simple", 1.0, false, 4, &diff::diff_abs);
         for (i, item) in data.iter().enumerate() {
             summary.add(item.0, item.1, i);
         }
@@ -293,10 +253,10 @@ mod tests {
         ];
 
         let mut summaries = DiffSummary::new_vec(4, &[
-            ("data0", 2e-8, false, &util::calc_diff_abs),
-            ("data1", 1e-6, true, &util::calc_diff_abs),
-            ("data2", 1e-9, false, &util::calc_diff_abs),
-            ("data3", 1e-9, false, &util::calc_diff_abs),
+            ("data0", 2e-8, false, &diff::diff_abs),
+            ("data1", 1e-6, true, &diff::diff_abs),
+            ("data2", 1e-9, false, &diff::diff_abs),
+            ("data3", 1e-9, false, &diff::diff_abs),
         ]);
         for (i, item) in data.iter().enumerate() {
             summaries[0].add(item.0, item.1, i);

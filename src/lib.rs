@@ -1,16 +1,17 @@
 mod diff_part_summary;
 mod diff_summary_f64;
 mod log_histogram;
+mod util;
 
-pub mod util;
+pub mod diff;
 pub use crate::diff_summary_f64::DiffSummary;
 
-// Log a single comparison, using logic similar to DiffSummary's
-// logic for larger sets of comparisons.
-// Note that a call to this function can can be thought of as a
-// more elaborate variation on:
+// Log a single comparison, using logic similar to
+// DiffSummary's handling of sets of comparisons.
+// A call to this function can can be thought of as a
+// more elaborate variation on the approx crate's:
 // assert_approx_eq!(x, y, allow_diff)
-pub fn log_assert_delta(name: &str, x: f64, y: f64, allow_diff: f64, allow_sign_change: bool, calc_diff: &dyn Fn(f64, f64) -> (f64, bool)) {
+pub fn log_assert_approx_eq(name: &str, x: f64, y: f64, allow_diff: f64, allow_sign_change: bool, calc_diff: &dyn Fn(f64, f64) -> (f64, bool)) {
     let (diff, sign_change) = (*calc_diff)(x, y);
     println!(
         "{}: {}{:e} vs {}{:e} diff {:e}, sign diff {}",
