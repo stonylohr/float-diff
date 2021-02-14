@@ -1,5 +1,7 @@
-# diff-summary-f64
+# float-diff
 
-Utilities for gathering and displaying a coarse summary of values,
-intended primarily for use in debugging. It holds at most two values
-at full precision, and only records categorized counts for others.
+Utilities for use in calculating and coarsely summarizing differences
+between floating point values.
+Designed primarily with testing and debugging in mind.
+
+Early releases will focus exclusively on the f64 type.

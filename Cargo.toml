@@ -1,10 +1,10 @@
 [package]
-name = "diff_summary_f64"
+name = "float-diff"
 version = "0.1.0"
 license = "MIT"
 edition = "2018"
 
-description = "Utilities for use in summarizing differences between numeric datasets."
+description = "Utilities for use in calculating and summarizing differences between floating point values."
 authors = ["Stony Lohr <stony.lohr@gmail.com>"]
 
 [dependencies]
