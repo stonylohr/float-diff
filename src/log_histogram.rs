@@ -58,34 +58,16 @@ impl LogHistogram {
             self.log10_buckets.insert(exp, current + 1);
         }
     }
-}
 
-impl Clone for LogHistogram {
-    fn clone(&self) -> Self {
-        LogHistogram {
-            num_nan: self.num_nan,
-            num_inf: self.num_inf,
-            num_zero: self.num_zero,
-            max_display_buckets: self.max_display_buckets,
-            log10_buckets: self.log10_buckets.clone(),
-        }
-    }
-}
-
-impl Display for LogHistogram {
-    // Display a summary, reduced down to a manageable number of buckets.
-    // Note that this bucket reduction may be relatively expensive.
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+    // Resulting map's keys are the original exponent.
+    // Its values are (reduced_exponent_min, reduced_exponent_max, count).
+    fn reduced_histo(&self) -> BTreeMap<isize, (isize, isize, usize)> {
         assert!(self.max_display_buckets > 2);
         let mut keys_asc: Vec<isize> = Vec::new();
-        // histo_reduced map's keys are the original exponent.
-        // Its values are (reduced_exponent_min, reduced_exponent_max, count).
         let mut histo_reduced: BTreeMap<isize, (isize, isize, usize)> = BTreeMap::new();
-        let mut num_total = self.num_inf + self.num_nan + self.num_zero;
         self.log10_buckets.iter().for_each(|(&key, &val)| {
             keys_asc.push(key);
             histo_reduced.insert(key, (key, key, val));
-            num_total += val;
         });
         keys_asc.sort();
         while histo_reduced.len() > self.max_display_buckets {
@@ -94,10 +76,10 @@ impl Display for LogHistogram {
             // buckets are at least somewhat evenly distributed in population.
             let mut collapse_from = isize::MIN;
             let mut val_smallest = (collapse_from, collapse_from, usize::MAX);
-            histo_reduced.iter().for_each(|(&key, &(_exp_min, _exp_max, count))| {
+            histo_reduced.iter().for_each(|(&key, &(exp_min, exp_max, count))| {
                 if count < val_smallest.2 {
                     collapse_from = key;
-                    val_smallest = (key, key, count);
+                    val_smallest = (exp_min, exp_max, count);
                 }
             });
 
@@ -127,11 +109,40 @@ impl Display for LogHistogram {
             };
 
             let val_sum = (isize::min(val_to.0, val_smallest.0), isize::max(val_to.1, val_smallest.1), val_to.2 + val_smallest.2);
-            histo_reduced.insert(collapse_to, val_sum);
+
             histo_reduced.remove(&collapse_from);
+            histo_reduced.insert(collapse_to, val_sum);
+
             keys_asc.remove(index_smallest);
             assert_eq!(keys_asc.len(), histo_reduced.len(), "Size mismatch between key list and map");
         }
+        histo_reduced
+    }
+}
+
+impl Clone for LogHistogram {
+    fn clone(&self) -> Self {
+        LogHistogram {
+            num_nan: self.num_nan,
+            num_inf: self.num_inf,
+            num_zero: self.num_zero,
+            max_display_buckets: self.max_display_buckets,
+            log10_buckets: self.log10_buckets.clone(),
+        }
+    }
+}
+
+impl Display for LogHistogram {
+    // Display a summary, reduced down to a manageable number of buckets.
+    // Note that this bucket reduction may be relatively expensive.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        // histo_reduced map's keys are the original exponent.
+        // Its values are (reduced_exponent_min, reduced_exponent_max, count).
+        let mut histo_reduced: BTreeMap<isize, (isize, isize, usize)> = self.reduced_histo();
+        let mut num_total = self.num_inf + self.num_nan + self.num_zero;
+        self.log10_buckets.iter().for_each(|(_key, &val)| {
+            num_total += val;
+        });
 
         let mut first = true;
         let mut pad_maybe = || {
@@ -142,8 +153,6 @@ impl Display for LogHistogram {
                 ", "
             }
         };
-
-        // write!(f, "{}count {}", pad_maybe(), num_total)?;
 
         if self.num_zero > 0 {
             let percent_zero = util::to_percent(self.num_zero, num_total); 
@@ -171,5 +180,72 @@ impl Display for LogHistogram {
             write!(f, "{}nan {}%", pad_maybe(), percent_nan)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LogHistogram};
+
+    #[test]
+    fn test_reduce() {
+        let mut map = std::collections::HashMap::new();
+        map.insert(-300, 5);
+        map.insert(-250, 4);
+        map.insert(-100, 3);
+        map.insert(-10 , 2);
+        map.insert(-7  , 1);
+        map.insert(-4  , 100);
+        map.insert(-1  , 200);
+        map.insert(0   , 5000);
+        map.insert(1   , 500);
+        map.insert(2   , 100);
+        map.insert(3   , 9);
+        map.insert(7   , 8);
+        map.insert(8   , 2);
+        map.insert(9   , 3);
+        map.insert(10  , 7);
+        map.insert(13  , 2);
+        let zeroes = 50000;
+        let infs = 12;
+        let nans = 4;
+
+        let mut histo = LogHistogram::new(5);
+        for _ in 0..zeroes {
+            histo.add(0.0);
+        }
+        for _ in 0..infs {
+            histo.add(f64::INFINITY);
+        }
+        for _ in 0..nans {
+            histo.add(f64::NAN);
+        }
+        let ten: f64 = 10.0;
+        for (exp, count) in map {
+            let val = ten.powi(exp);
+            for _ in 0..count {
+                histo.add(val);
+            }
+        }
+
+        // histo_reduced's keys are the original exponent.
+        // Its values are (reduced_exponent_min, reduced_exponent_max, count).
+        // isize, (isize, isize, usize)
+        let histo_reduced = histo.reduced_histo();
+
+        // for (key, (exp_min, exp_max, count)) in &histo_reduced {
+        //     if exp_min == exp_max {
+        //         println!("e{} {}", key, count);
+        //     } else {
+        //         println!("e{} to e{} {}", exp_min, exp_max, count);
+        //     }
+        // }
+
+        assert_eq!(histo_reduced.len(), 5);
+        assert_eq!(*histo_reduced.get(&-4).unwrap(), (-300, -4 , 115));
+        assert_eq!(*histo_reduced.get(&-1).unwrap(), (-1  , -1 , 200));
+        assert_eq!(*histo_reduced.get(& 0).unwrap(), ( 0  ,  0 , 5000));
+        assert_eq!(*histo_reduced.get(& 1).unwrap(), ( 1  ,  1 , 500));
+        assert_eq!(*histo_reduced.get(& 2).unwrap(), ( 2  ,  13, 131));
     }
 }
