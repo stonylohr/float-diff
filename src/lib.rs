@@ -4,7 +4,7 @@ mod log_histogram;
 mod util;
 
 pub mod diff;
-pub use crate::diff_summary_f64::DiffSummary;
+pub use crate::diff_summary_f64::DiffSummary as DiffSummary64;
 
 // PLEASE NOTE that this function is more likely than
 // average to experience breaking changes or
