@@ -6,6 +6,9 @@ mod util;
 pub mod diff;
 pub use crate::diff_summary_f64::DiffSummary;
 
+// PLEASE NOTE that this function is more likely than
+// average to experience breaking changes or
+// to be dropped in future releases.
 // Log a single comparison, using logic similar to
 // DiffSummary's handling of sets of comparisons.
 // A call to this function can can be thought of as a
