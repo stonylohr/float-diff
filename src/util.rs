@@ -1,12 +1,3 @@
-// Return true if diff a is "worse" than diff b.
-// NAN is worse than INFINITY is worse than anything finite.
-// All diffs are required to be positive
-// (including positive zero and positive nan).
-pub fn is_diff_worse(a: f64, b: f64) -> bool {
-    assert!(a.is_sign_positive() && b.is_sign_positive());
-    (a.is_nan() && !b.is_nan()) || a > b
-}
-
 // Round a value for use in LogHistogram display.
 // Never round to 0 or 100. Only accept those values naturally.
 pub fn to_percent(num_part: usize, num_all: usize) -> usize {

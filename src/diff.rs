@@ -2,6 +2,15 @@ extern crate float_cmp;
 
 use float_cmp::Ulps;
 
+// Return true if diff a is "worse" than diff b.
+// NAN is worse than INFINITY is worse than anything finite.
+// All diffs are required to be positive
+// (including positive zero and positive nan).
+pub fn is_diff_worse(a: f64, b: f64) -> bool {
+    assert!(a.is_sign_positive() && b.is_sign_positive());
+    (a.is_nan() && !b.is_nan()) || a > b
+}
+
 // Return the absolute difference between two values.
 // If both values are nan or same-sign infinite, consider the difference to be 0.
 pub fn diff_abs(x: f64, y: f64) -> (f64, bool) {
@@ -53,10 +62,15 @@ pub fn diff_lesser(x: f64, y: f64) -> (f64, bool) {
 pub fn diff_ulps(x: f64, y: f64) -> (f64, bool) {
     let ulps = if x.is_nan() != y.is_nan() {
         f64::NAN
+    } else if x.is_nan() {
+        // For -NAN vs NAN, indicate a sign change, but otherwise treat as equal.
+        0.0
     } else if x.is_finite() != y.is_finite() {
+        // For -INFINITY vs INFINITY, go ahead and return a huge ulps difference.
         f64::INFINITY
     } else {
-        x.ulps(&y).abs() as f64
+        // Cast to f64 before abs to avoid risk of overflow in extreme cases.
+        (x.ulps(&y) as f64).abs()
     };
     (ulps, x.is_sign_negative() != y.is_sign_negative())
 }

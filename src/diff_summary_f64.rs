@@ -36,7 +36,7 @@ pub struct DiffSummary<'a>
     histo: LogHistogram,
 
     // The function to use when calculating the difference and sign change status of a value pair.
-    calc_diff: &'a dyn Fn(f64, f64) -> (f64, bool),
+    pub calc_diff: &'a dyn Fn(f64, f64) -> (f64, bool),
 }
 
 impl<'a> DiffSummary<'a> {
@@ -83,7 +83,7 @@ impl<'a> DiffSummary<'a> {
     pub fn add(&mut self, x: f64, y: f64, index: usize) {
         self.num_total += 1;
         let (diff, sign_change) = (*self.calc_diff)(x, y);
-        let is_diff_worst = util::is_diff_worse(diff, self.diff);
+        let is_diff_worst = crate::diff::is_diff_worse(diff, self.diff);
         // Funky negation on next line is intentional, to get desired nan behavior.
         if !(diff == 0.0) {
             self.summary_diff.add(x, y, index, is_diff_worst);
